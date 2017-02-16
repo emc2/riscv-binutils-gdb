@@ -391,6 +391,7 @@ enum reg_class
 {
   RCLASS_GPR,
   RCLASS_FPR,
+  RCLASS_EHR,
   RCLASS_CSR,
   RCLASS_MAX
 };
@@ -549,8 +550,10 @@ validate_riscv_insn (const struct riscv_opcode *opc)
       case 'T':	USE_BITS (OP_MASK_RS2,		OP_SH_RS2);	break;
       case 'd':	USE_BITS (OP_MASK_RD,		OP_SH_RD);	break;
       case 'm':	USE_BITS (OP_MASK_RM,		OP_SH_RM);	break;
+      case 'e':	USE_BITS (OP_MASK_RS1,		OP_SH_RS1);	break;
       case 's':	USE_BITS (OP_MASK_RS1,		OP_SH_RS1);	break;
       case 't':	USE_BITS (OP_MASK_RS2,		OP_SH_RS2);	break;
+      case 'r':	USE_BITS (OP_MASK_RS3,		OP_SH_RS3);	break;
       case 'P':	USE_BITS (OP_MASK_PRED,		OP_SH_PRED); break;
       case 'Q':	USE_BITS (OP_MASK_SUCC,		OP_SH_SUCC); break;
       case 'o':
@@ -562,6 +565,12 @@ validate_riscv_insn (const struct riscv_opcode *opc)
       case '[': break;
       case ']': break;
       case '0': break;
+      case 'J': used_bits |= ENCODE_EMA_IMM (-1U); break;
+      case 'X': used_bits |= ENCODE_EM_IMM (-1U); break;
+      case 'K': used_bits |= ENCODE_EC_IMM (-1U); break;
+      case 'L': used_bits |= ENCODE_ECR1_IMM (-1U); break;
+      case 'M': used_bits |= ENCODE_ECR2_IMM (-1U); break;
+      case 'N': used_bits |= ENCODE_ECR3_IMM (-1U); break;
       default:
 	as_bad (_("internal: bad RISC-V opcode "
 		  "(unknown operand type `%c'): %s %s"),
@@ -630,6 +639,8 @@ md_begin (void)
   hash_reg_names (RCLASS_GPR, riscv_gpr_names_abi, NGPR);
   hash_reg_names (RCLASS_FPR, riscv_fpr_names_numeric, NFPR);
   hash_reg_names (RCLASS_FPR, riscv_fpr_names_abi, NFPR);
+  hash_reg_names (RCLASS_EHR, riscv_ehr_names_numeric, NEHR);
+  hash_reg_names (RCLASS_EHR, riscv_ehr_names_abi, NEHR);
 
 #define DECLARE_CSR(name, num) hash_reg_name (RCLASS_CSR, #name, num);
 #include "opcode/riscv-opc.h"
@@ -746,6 +757,10 @@ macro_build (expressionS *ep, const char *name, const char *fmt, ...)
 
 	case 't':
 	  INSERT_OPERAND (RS2, insn, va_arg (args, int));
+	  continue;
+
+        case 'r':
+	  INSERT_OPERAND (RS3, insn, va_arg (args, int));
 	  continue;
 
 	case '>':
@@ -1210,8 +1225,9 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
 	    case '\0': 	/* End of args.  */
 	      if (insn->pinfo != INSN_MACRO)
 		{
-		  if (!insn->match_func (insn, ip->insn_opcode))
+		  if (!insn->match_func (insn, ip->insn_opcode)) {
 		    break;
+                  }
 		  if (riscv_insn_length (insn->match) == 2 && !riscv_opts.rvc)
 		    break;
 		}
@@ -1492,6 +1508,7 @@ rvc_lui:
 	    case 'd':		/* Destination register.  */
 	    case 's':		/* Source register.  */
 	    case 't':		/* Target register.  */
+	    case 'r':		/* Extra register rs3.  */
 	      if (reg_lookup (&s, RCLASS_GPR, &regno))
 		{
 		  c = *args;
@@ -1511,7 +1528,22 @@ rvc_lui:
 		    case 't':
 		      INSERT_OPERAND (RS2, *ip, regno);
 		      break;
+		    case 'r':
+		      INSERT_OPERAND (RS3, *ip, regno);
+		      break;
 		    }
+		  continue;
+		}
+	      break;
+
+	    case 'e':		/* Engine handle register.  */
+	      if (reg_lookup (&s, RCLASS_EHR, &regno))
+		{
+		  c = *args;
+		  if (*s == ' ')
+		    ++s;
+
+                  INSERT_OPERAND (RS1, *ip, regno);
 		  continue;
 		}
 	      break;
@@ -1648,6 +1680,72 @@ jump:
 	      else
 		*imm_reloc = BFD_RELOC_RISCV_CALL;
 	      continue;
+
+	    case 'J':
+	      my_getExpression (imm_expr, s);
+              check_absolute_expr (ip, imm_expr);
+              if (imm_expr->X_add_number < 0
+                  || imm_expr->X_add_number >= (signed)RISCV_EMA_IMM_REACH)
+                as_bad (_("expression not in range 0..65535"));
+              ip->insn_opcode |= ENCODE_EMA_IMM(imm_expr->X_add_number);
+              imm_expr->X_op = O_absent;
+              s = expr_end;
+              continue;
+
+	    case 'X':
+	      my_getExpression (imm_expr, s);
+              check_absolute_expr (ip, imm_expr);
+              if (imm_expr->X_add_number < 0
+                  || imm_expr->X_add_number >= (signed)RISCV_EM_IMM_REACH)
+                as_bad (_("expression not in range 0..1023"));
+              ip->insn_opcode |= ENCODE_EM_IMM(imm_expr->X_add_number);
+              imm_expr->X_op = O_absent;
+              s = expr_end;
+              continue;
+
+	    case 'K':
+	      my_getExpression (imm_expr, s);
+              check_absolute_expr (ip, imm_expr);
+              if (imm_expr->X_add_number < 0
+                  || imm_expr->X_add_number >= (signed)RISCV_EC_IMM_REACH)
+                as_bad (_("expression not in range 0..65535"));
+              ip->insn_opcode |= ENCODE_EC_IMM(imm_expr->X_add_number);
+              imm_expr->X_op = O_absent;
+              s = expr_end;
+              continue;
+
+	    case 'L':
+	      my_getExpression (imm_expr, s);
+              check_absolute_expr (ip, imm_expr);
+              if (imm_expr->X_add_number < 0
+                  || imm_expr->X_add_number >= (signed)RISCV_ECR1_IMM_REACH)
+                as_bad (_("expression not in range 0..4095"));
+              ip->insn_opcode |= ENCODE_ECR1_IMM(imm_expr->X_add_number);
+              imm_expr->X_op = O_absent;
+              s = expr_end;
+              continue;
+
+ 	    case 'M':
+	      my_getExpression (imm_expr, s);
+              check_absolute_expr (ip, imm_expr);
+              if (imm_expr->X_add_number < 0
+                  || imm_expr->X_add_number >= (signed)RISCV_ECR2_IMM_REACH)
+                as_bad (_("expression not in range 0..127"));
+              ip->insn_opcode |= ENCODE_ECR2_IMM(imm_expr->X_add_number);
+              imm_expr->X_op = O_absent;
+              s = expr_end;
+              continue;
+
+  	    case 'N':
+	      my_getExpression (imm_expr, s);
+              check_absolute_expr (ip, imm_expr);
+              if (imm_expr->X_add_number < 0
+                  || imm_expr->X_add_number >= (signed)RISCV_ECR3_IMM_REACH)
+                as_bad (_("expression not in range 0..3"));
+              ip->insn_opcode |= ENCODE_ECR3_IMM(imm_expr->X_add_number);
+              imm_expr->X_op = O_absent;
+              s = expr_end;
+              continue;
 
 	    default:
 	      as_fatal (_("internal error: bad argument type %c"), *args);
@@ -2494,6 +2592,9 @@ tc_riscv_regname_to_dw2regnum (char *regname)
 
   if ((reg = reg_lookup_internal (regname, RCLASS_FPR)) >= 0)
     return reg + 32;
+
+  if ((reg = reg_lookup_internal (regname, RCLASS_EHR)) >= 0)
+    return reg + 64;
 
   as_bad (_("unknown register `%s'"), regname);
   return -1;

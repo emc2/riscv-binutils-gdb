@@ -56,6 +56,21 @@ const char * const riscv_fpr_names_abi[NFPR] = {
   "fs8", "fs9", "fs10", "fs11", "ft8", "ft9", "ft10", "ft11"
 };
 
+const char * const riscv_ehr_names_numeric[NEHR] =
+{
+  "e0",   "e1",   "e2",   "e3",   "e4",   "e5",   "e6",   "e7",
+  "e8",   "e9",   "e10",  "e11",  "e12",  "e13",  "e14",  "e15",
+  "e16",  "e17",  "e18",  "e19",  "e20",  "e21",  "e22",  "e23",
+  "e24",  "e25",  "e26",  "e27",  "e28",  "e29",  "e30",  "e31"
+};
+
+const char * const riscv_ehr_names_abi[NEHR] = {
+  "et0", "et1", "et2",  "et3",  "et4", "et5", "et6",  "et7",
+  "es0", "es1", "ea0",  "ea1",  "ea2", "ea3", "ea4",  "ea5",
+  "ea6", "ea7", "es2",  "es3",  "es4", "es5", "es6",  "es7",
+  "es8", "es9", "es10", "es11", "et8", "et9", "et10", "et11"
+};
+
 /* The order of overloaded instructions matters.  Label arguments and
    register arguments look the same. Instructions that can have either
    for arguments must apear in the correct order in this table for the
@@ -79,6 +94,19 @@ const char * const riscv_fpr_names_abi[NFPR] = {
 #define MASK_AQ (OP_MASK_AQ << OP_SH_AQ)
 #define MASK_RL (OP_MASK_RL << OP_SH_RL)
 #define MASK_AQRL (MASK_AQ | MASK_RL)
+#define MASK_TRANS (MASK_RD | MASK_RS2)
+
+#define MATCH_TRANS_INIT (ENCODE_EM_IMM(TRANS_INIT))
+#define MATCH_TRANS_RESET (ENCODE_EM_IMM(TRANS_RESET))
+#define MATCH_TRANS_START (ENCODE_EM_IMM(TRANS_START))
+#define MATCH_TRANS_STOP (ENCODE_EM_IMM(TRANS_STOP))
+#define MATCH_TRANS_PAUSE (ENCODE_EM_IMM(TRANS_PAUSE))
+#define MATCH_TRANS_UNPAUSE (ENCODE_EM_IMM(TRANS_UNPAUSE))
+#define MATCH_TRANS_SAVEBEGIN (ENCODE_EM_IMM(TRANS_SAVEBEGIN))
+#define MATCH_TRANS_SAVEEND (ENCODE_EM_IMM(TRANS_SAVEEND))
+#define MATCH_TRANS_SAVERES (ENCODE_EM_IMM(TRANS_SAVERES))
+#define MATCH_TRANS_RESBEGIN (ENCODE_EM_IMM(TRANS_RESBEGIN))
+#define MATCH_TRANS_RESEND (ENCODE_EM_IMM(TRANS_RESEND))
 
 static int
 match_opcode (const struct riscv_opcode *op, insn_t insn)
@@ -679,6 +707,34 @@ const struct riscv_opcode riscv_opcodes[] =
 {"sfence.vm", "I",   "",     MATCH_SFENCE_VM, MASK_SFENCE_VM | MASK_RS1, match_opcode, 0 },
 {"sfence.vm", "I",   "s",    MATCH_SFENCE_VM, MASK_SFENCE_VM, match_opcode, 0 },
 {"wfi",       "I",   "",     MATCH_WFI, MASK_WFI, match_opcode, 0 },
+
+/* Engine extension */
+{"eng.acquire","X",   "e,J",      MATCH_ENG_ACQ, MASK_ENG_ACQ, match_opcode, 0},
+{"eng.release","X",   "e",        MATCH_ENG_REL, MASK_ENG_REL, match_opcode, 0},
+{"eng.rebind", "X",   "e,t",      MATCH_ENG_REBIND, MASK_ENG_REBIND, match_opcode, 0},
+{"eng.ehsave", "X",   "e,d",      MATCH_ENG_EHSAVE, MASK_ENG_EHSAVE, match_opcode, 0},
+{"eng.init",   "X",   "e",        MATCH_ENG_TRANS | MATCH_TRANS_INIT, MASK_ENG_TRANS | MASK_TRANS, match_opcode, INSN_ALIAS},
+{"eng.reset",  "X",   "e",        MATCH_ENG_TRANS | MATCH_TRANS_RESET, MASK_ENG_TRANS | MASK_TRANS, match_opcode, INSN_ALIAS},
+{"eng.start",  "X",   "e",        MATCH_ENG_TRANS | MATCH_TRANS_START, MASK_ENG_TRANS | MASK_TRANS, match_opcode, INSN_ALIAS},
+{"eng.stop",   "X",   "e",        MATCH_ENG_TRANS | MATCH_TRANS_STOP, MASK_ENG_TRANS | MASK_TRANS, match_opcode, INSN_ALIAS},
+{"eng.pause",  "X",   "e",        MATCH_ENG_TRANS | MATCH_TRANS_PAUSE, MASK_ENG_TRANS | MASK_TRANS, match_opcode, INSN_ALIAS},
+{"eng.unpause", "X",   "e",        MATCH_ENG_TRANS | MATCH_TRANS_UNPAUSE, MASK_ENG_TRANS | MASK_TRANS, match_opcode, INSN_ALIAS},
+{"eng.savebegin","X",   "e",        MATCH_ENG_TRANS | MATCH_TRANS_SAVEBEGIN, MASK_ENG_TRANS | MASK_TRANS, match_opcode, INSN_ALIAS},
+{"eng.saveend",  "X",   "e",        MATCH_ENG_TRANS | MATCH_TRANS_SAVEEND, MASK_ENG_TRANS | MASK_TRANS, match_opcode, INSN_ALIAS},
+{"eng.saveres",  "X",   "e",        MATCH_ENG_TRANS | MATCH_TRANS_SAVERES, MASK_ENG_TRANS | MASK_TRANS, match_opcode, INSN_ALIAS},
+{"eng.resbegin", "X",   "e",        MATCH_ENG_TRANS | MATCH_TRANS_RESBEGIN, MASK_ENG_TRANS | MASK_TRANS, match_opcode, INSN_ALIAS},
+{"eng.resend",   "X",   "e",        MATCH_ENG_TRANS | MATCH_TRANS_RESEND, MASK_ENG_TRANS | MASK_TRANS, match_opcode, INSN_ALIAS},
+{"eng.trans",  "X",   "e,X",      MATCH_ENG_TRANS, MASK_ENG_TRANS, match_opcode, 0},
+{"eng.savecnt","X",   "e,d",      MATCH_ENG_SAVECNT, MASK_ENG_SAVECNT, match_opcode, 0},
+{"eng.save",   "X",   "e,d,t",    MATCH_ENG_SAVE, MASK_ENG_SAVE, match_opcode, 0},
+{"eng.restore","X",   "e,d,t",    MATCH_ENG_RESTORE, MASK_ENG_RESTORE, match_opcode, 0},
+{"eng.icmd",   "X",   "e,K",      MATCH_ENG_ICMD, MASK_ENG_ICMD, match_opcode, 0},
+{"eng.rcmd",   "X",   "e,L,d",    MATCH_ENG_RCMD, MASK_ENG_RCMD, match_opcode, 0},
+{"eng.rs1cmd", "X",   "e,M,d,t",  MATCH_ENG_RS1CMD, MASK_ENG_RS1CMD, match_opcode, 0},
+{"eng.rs2cmd", "X",   "e,N,d,t,r",MATCH_ENG_RS2CMD, MASK_ENG_RS2CMD, match_opcode, 0},
+{"eng.s1cmd",  "X",   "e,L,d",    MATCH_ENG_S1CMD, MASK_ENG_S1CMD, match_opcode, 0},
+{"eng.s2cmd",  "X",   "e,M,d,t",  MATCH_ENG_S2CMD, MASK_ENG_S2CMD, match_opcode, 0},
+{"eng.s3cmd",  "X",   "e,N,d,t,r",MATCH_ENG_S3CMD, MASK_ENG_S3CMD, match_opcode, 0},
 
 /* Terminate the list.  */
 {0, 0, 0, 0, 0, 0, 0}

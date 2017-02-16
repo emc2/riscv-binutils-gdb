@@ -98,6 +98,20 @@ static const char * const riscv_pred_succ[16] =
 #define EXTRACT_RVC_J_IMM(x) \
   ((RV_X(x, 3, 3) << 1) | (RV_X(x, 11, 1) << 4) | (RV_X(x, 2, 1) << 5) | (RV_X(x, 7, 1) << 6) | (RV_X(x, 6, 1) << 7) | (RV_X(x, 9, 2) << 8) | (RV_X(x, 8, 1) << 10) | (-RV_X(x, 12, 1) << 11))
 
+#define EXTRACT_EMA_IMM(x) \
+  (RV_X(x, 20, 5) | (RV_X(x, 7, 5) << 5) | (RV_X(x, 27, 5) << 10) | (RV_X(x, 26, 1) << 15))
+#define EXTRACT_EM_IMM(x) \
+  (RV_X(x, 20, 5) | (RV_X(x, 7, 5) << 5))
+#define EXTRACT_EC_IMM(x)                                              \
+  (RV_X(x, 25, 7) | (RV_X(x, 20, 5) << 7) | (RV_X(x, 7, 5) << 12))
+#define EXTRACT_ECR1_IMM(x) \
+  (RV_X(x, 25, 7) | (RV_X(x, 20, 5) << 7))
+#define EXTRACT_ECR2_IMM(x) \
+  (RV_X(x, 25, 7))
+#define EXTRACT_ECR3_IMM(x) \
+  (RV_X(x, 25, 2))
+
+
 #define ENCODE_ITYPE_IMM(x) \
   (RV_X(x, 0, 12) << 20)
 #define ENCODE_STYPE_IMM(x) \
@@ -135,6 +149,19 @@ static const char * const riscv_pred_succ[16] =
 #define ENCODE_RVC_J_IMM(x) \
   ((RV_X(x, 1, 3) << 3) | (RV_X(x, 4, 1) << 11) | (RV_X(x, 5, 1) << 2) | (RV_X(x, 6, 1) << 7) | (RV_X(x, 7, 1) << 6) | (RV_X(x, 8, 2) << 9) | (RV_X(x, 10, 1) << 8) | (RV_X(x, 11, 1) << 12))
 
+#define ENCODE_EMA_IMM(x) \
+  ((RV_X(x, 0, 5) << 20) | (RV_X(x, 5, 5) << 7) | (RV_X(x, 10, 5) << 27) | (RV_X(x, 15, 1) << 26))
+#define ENCODE_EM_IMM(x) \
+  ((RV_X(x, 0, 5) << 20) | (RV_X(x, 5, 5) << 7))
+#define ENCODE_EC_IMM(x)                                \
+  ((RV_X(x, 0, 7) << 25) | (RV_X(x, 7, 5) << 20) | (RV_X(x, 12, 5) << 7))
+#define ENCODE_ECR1_IMM(x)                                \
+  ((RV_X(x, 0, 7) << 25) | (RV_X(x, 7, 5) << 20))
+#define ENCODE_ECR2_IMM(x)                                \
+  ((RV_X(x, 0, 7) << 25))
+#define ENCODE_ECR3_IMM(x)                                \
+  ((RV_X(x, 0, 2) << 25))
+
 #define VALID_ITYPE_IMM(x) (EXTRACT_ITYPE_IMM(ENCODE_ITYPE_IMM(x)) == (x))
 #define VALID_STYPE_IMM(x) (EXTRACT_STYPE_IMM(ENCODE_STYPE_IMM(x)) == (x))
 #define VALID_SBTYPE_IMM(x) (EXTRACT_SBTYPE_IMM(ENCODE_SBTYPE_IMM(x)) == (x))
@@ -153,6 +180,12 @@ static const char * const riscv_pred_succ[16] =
 #define VALID_RVC_SDSP_IMM(x) (EXTRACT_RVC_SDSP_IMM(ENCODE_RVC_SDSP_IMM(x)) == (x))
 #define VALID_RVC_B_IMM(x) (EXTRACT_RVC_B_IMM(ENCODE_RVC_B_IMM(x)) == (x))
 #define VALID_RVC_J_IMM(x) (EXTRACT_RVC_J_IMM(ENCODE_RVC_J_IMM(x)) == (x))
+#define VALID_EMA_IMM(x) (EXTRACT_EMA_IMM(ENCODE_EMA_IMM(x)) == x)
+#define VALID_EM_IMM(x) (EXTRACT_EM_IMM(ENCODE_EM_IMM(x)) == x)
+#define VALID_EC_IMM(x) (EXTRACT_EC_IMM(ENCODE_EC_IMM(x)) == x)
+#define VALID_ECR1_IMM(x) (EXTRACT_ECR1_IMM(ENCODE_ECR1_IMM(x)) == x)
+#define VALID_ECR2_IMM(x) (EXTRACT_ECR2_IMM(ENCODE_ECR2_IMM(x)) == x)
+#define VALID_ECR3_IMM(x) (EXTRACT_ECR3_IMM(ENCODE_ECR3_IMM(x)) == x)
 
 #define RISCV_RTYPE(insn, rd, rs1, rs2) \
   ((MATCH_ ## insn) | ((rd) << OP_SH_RD) | ((rs1) << OP_SH_RS1) | ((rs2) << OP_SH_RS2))
@@ -190,6 +223,19 @@ static const char * const riscv_pred_succ[16] =
 #define RISCV_BRANCH_ALIGN_BITS RISCV_JUMP_ALIGN_BITS
 #define RISCV_BRANCH_ALIGN (1 << RISCV_BRANCH_ALIGN_BITS)
 #define RISCV_BRANCH_REACH (RISCV_IMM_REACH * RISCV_BRANCH_ALIGN)
+
+#define RISCV_EMA_IMM_BITS 16
+#define RISCV_EM_IMM_BITS 10
+#define RISCV_EC_IMM_BITS 17
+#define RISCV_ECR1_IMM_BITS 12
+#define RISCV_ECR2_IMM_BITS 7
+#define RISCV_ECR3_IMM_BITS 2
+#define RISCV_EMA_IMM_REACH (1LL << RISCV_EMA_IMM_BITS)
+#define RISCV_EM_IMM_REACH (1LL << RISCV_EM_IMM_BITS)
+#define RISCV_EC_IMM_REACH (1LL << RISCV_EC_IMM_BITS)
+#define RISCV_ECR1_IMM_REACH (1LL << RISCV_ECR1_IMM_BITS)
+#define RISCV_ECR2_IMM_REACH (1LL << RISCV_ECR2_IMM_BITS)
+#define RISCV_ECR3_IMM_REACH (1LL << RISCV_ECR3_IMM_BITS)
 
 /* RV fields.  */
 
@@ -245,6 +291,20 @@ static const char * const riscv_pred_succ[16] =
 
 #define NGPR 32
 #define NFPR 32
+#define NEHR 32
+
+/* Transition codes */
+#define TRANS_INIT 0
+#define TRANS_RESET 1
+#define TRANS_START 2
+#define TRANS_STOP 3
+#define TRANS_PAUSE 4
+#define TRANS_UNPAUSE 5
+#define TRANS_SAVEBEGIN 8
+#define TRANS_SAVEEND 9
+#define TRANS_SAVERES 10
+#define TRANS_RESBEGIN 12
+#define TRANS_RESEND 13
 
 /* Replace bits MASK << SHIFT of STRUCT with the equivalent bits in
    VALUE << SHIFT.  VALUE is evaluated exactly once.  */
@@ -338,6 +398,8 @@ extern const char * const riscv_gpr_names_numeric[NGPR];
 extern const char * const riscv_gpr_names_abi[NGPR];
 extern const char * const riscv_fpr_names_numeric[NFPR];
 extern const char * const riscv_fpr_names_abi[NFPR];
+extern const char * const riscv_ehr_names_numeric[NEHR];
+extern const char * const riscv_ehr_names_abi[NEHR];
 
 extern const struct riscv_opcode riscv_opcodes[];
 

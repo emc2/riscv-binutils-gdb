@@ -223,6 +223,10 @@ print_insn_args (const char *d, insn_t l, bfd_vma pc, disassemble_info *info)
 	    print (info->stream, "0");
 	  break;
 
+        case 'e':
+	  print (info->stream, "%s", riscv_ehr_names_abi[rs1]);
+	  break;
+
 	case 'b':
 	case 's':
 	  print (info->stream, "%s", riscv_gpr_names[rs1]);
@@ -335,6 +339,34 @@ print_insn_args (const char *d, insn_t l, bfd_vma pc, disassemble_info *info)
 
 	case 'Z':
 	  print (info->stream, "%d", rs1);
+	  break;
+
+	case 'r':
+	  print (info->stream, "%s", riscv_gpr_names[EXTRACT_OPERAND (RS3, l)]);
+	  break;
+
+	case 'J':
+	  print (info->stream, "%d", (int)EXTRACT_EMA_IMM (l));
+	  break;
+
+	case 'X':
+	  print (info->stream, "%d", (int)EXTRACT_EM_IMM (l));
+	  break;
+
+	case 'K':
+	  print (info->stream, "%d", (int)EXTRACT_EC_IMM (l));
+	  break;
+
+	case 'L':
+	  print (info->stream, "%d", (int)EXTRACT_ECR1_IMM (l));
+	  break;
+
+	case 'M':
+	  print (info->stream, "%d", (int)EXTRACT_ECR2_IMM (l));
+	  break;
+
+	case 'N':
+	  print (info->stream, "%d", (int)EXTRACT_ECR3_IMM (l));
 	  break;
 
 	default:
